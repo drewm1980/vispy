@@ -42,10 +42,12 @@ class SphereVisual(CompoundVisual):
     edge_color : tuple or Color
         The `Color` to use when drawing the sphere edges. If `None`, then no
         sphere edges are drawn.
+    edge_width : float
+        The width in px of the edges
     """
     def __init__(self, radius=1.0, cols=30, rows=30, depth=30, subdivisions=3,
                  method='latitude', vertex_colors=None, face_colors=None,
-                 color=(0.5, 0.5, 1, 1), edge_color=None, **kwargs):
+                 color=(0.5, 0.5, 1, 1), edge_color=None, edge_width=None,**kwargs):
 
         mesh = create_sphere(cols, rows, depth, radius=radius,
                              subdivisions=subdivisions, method=method)
@@ -54,10 +56,19 @@ class SphereVisual(CompoundVisual):
                                 faces=mesh.get_faces(),
                                 vertex_colors=vertex_colors,
                                 face_colors=face_colors, color=color)
-        if edge_color:
+
+        # Default is to not render the border at all unless one of its
+        # properties is set.
+        if edge_color or edge_width:
+            if edge_color is None:
+                edge_color = (0.5, 0.5, 0.5, 1) # Consistent with line default
+            if edge_width is None:
+                edge_width = 1.0 # Consistent with line default
             self._border = MeshVisual(vertices=mesh.get_vertices(),
                                       faces=mesh.get_edges(),
-                                      color=edge_color, mode='lines')
+                                      color=edge_color,
+                                      edge_width=edge_width,
+                                      mode='lines')
         else:
             self._border = MeshVisual()
 

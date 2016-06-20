@@ -151,6 +151,8 @@ class MeshVisual(Visual):
         Colors to use for each face.
     color : instance of Color
         The color to use.
+    edge_width : float
+        The width of the edges in px
     meshdata : instance of MeshData | None
         The meshdata.
     shading : str | None
@@ -161,7 +163,8 @@ class MeshVisual(Visual):
         Keyword arguments to pass to `Visual`.
     """
     def __init__(self, vertices=None, faces=None, vertex_colors=None,
-                 face_colors=None, color=(0.5, 0.5, 1, 1), meshdata=None,
+                 face_colors=None, color=(0.5, 0.5, 1, 1), 
+                 edge_width=1.0, meshdata=None,
                  shading=None, mode='triangles', **kwargs):
 
         # Function for computing phong shading
@@ -195,6 +198,14 @@ class MeshVisual(Visual):
 
         # varyings
         self._color_var = Varying('v_color', dtype='vec4')
+
+        # Uniform edge width
+        if type(edge_width) is int:
+            self._edge_width = float(edge_width)
+        elif type(edge_width) is float:
+            self._edge_width = edge_width
+        else:
+            raise TypeError(str(type(edge_width)) + ' edge_width must be convertable to float!')
 
         # Init
         self._bounds = None
@@ -279,6 +290,17 @@ class MeshVisual(Visual):
     def color(self, c):
         if c is not None:
             self._color = Color(c)
+        self.mesh_data_changed()
+
+    @property
+    def edge_width(self):
+        """The uniform edge width for this mesh.
+        """
+        return self._edge_width
+
+    @edge_width.setter
+    def edge_width(self,width):
+        self._edge_width = width
         self.mesh_data_changed()
 
     def mesh_data_changed(self):
@@ -378,10 +400,21 @@ class MeshVisual(Visual):
         self._shading = value
 
     def _prepare_draw(self, view):
-        if self._data_changed:
-            if self._update_data() is False:
-                return False
-            self._data_changed = False
+
+        # Do we want to use OpenGL, and can we?
+        GL = None
+        from ..app._default_app import default_app
+        if default_app is not None and \
+                default_app.backend_name != 'ipynb_webgl':
+            try:
+                import OpenGL.GL as GL
+            except Exception:  # can be other than ImportError sometimes
+                pass
+
+        # Turn on line width
+        if GL:
+            GL.glLineWidth(max(self._edge_width, 1.0))
+        return True
 
     def draw(self, *args, **kwds):
         Visual.draw(self, *args, **kwds)
